@@ -66,12 +66,34 @@ namespace Recetario_API.Controllers
         public async Task<ActionResult<RecetaDto>> CrearReceta([FromForm] RecetaCreate receta)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-            Console.WriteLine(ModelState["ListaIngredientes"].AttemptedValue);
-            Console.WriteLine(ModelState["Preparacion"].AttemptedValue);
+
+            var listaIngredientes = "[" + ModelState["ListaIngredientes"].AttemptedValue + "]";
+            var listaPreparacion = "[" + ModelState["Preparacion"].AttemptedValue + "]";
+
+            List<IngredientesDto> listaIng = JsonConvert.DeserializeObject<List<IngredientesDto>>(listaIngredientes);
+            List<PreparacionDto> listaPrep = JsonConvert.DeserializeObject<List<PreparacionDto>>(listaPreparacion);
+
+            foreach (var ingrediente in listaIng)
+            {
+                receta.ListaIngredientes.Add(new IngredientesDto
+                {
+                    Cantidad = ingrediente.Cantidad,
+                    Unidad = ingrediente.Unidad,
+                    Ingrediente = ingrediente.Ingrediente
+                });
+            }
+
+            foreach (var preparacion in listaPrep)
+            {
+                receta.Preparacion.Add(new PreparacionDto
+                {
+                    PasoPreparacion = preparacion.PasoPreparacion
+                });
+            }
             if (receta == null) return BadRequest(receta);
 
             var newReceta = await _recetaService.CreateReceta(receta, _dbContext);
-            return CreatedAtRoute("GetReceta", new {id = newReceta},newReceta); 
+            return CreatedAtRoute("GetReceta", new {id = newReceta},receta); 
            
         }
 
@@ -98,6 +120,29 @@ namespace Recetario_API.Controllers
         public IActionResult UpdateReceta(int id, [FromForm] RecetaUpdate receta)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
+            var listaIngredientes = "[" + ModelState["ListaIngredientes"].AttemptedValue + "]";
+            var listaPreparacion = "[" + ModelState["Preparacion"].AttemptedValue + "]";
+
+            List<IngredientesDto> listaIng = JsonConvert.DeserializeObject<List<IngredientesDto>>(listaIngredientes);
+            List<PreparacionDto> listaPrep = JsonConvert.DeserializeObject<List<PreparacionDto>>(listaPreparacion);
+
+            foreach (var ingrediente in listaIng)
+            {
+                receta.ListaIngredientes.Add(new IngredientesDto
+                {
+                    Cantidad = ingrediente.Cantidad,
+                    Unidad = ingrediente.Unidad,
+                    Ingrediente = ingrediente.Ingrediente
+                });
+            }
+
+            foreach (var preparacion in listaPrep)
+            {
+                receta.Preparacion.Add(new PreparacionDto
+                {
+                    PasoPreparacion = preparacion.PasoPreparacion
+                });
+            }
 
             if (receta == null || id == 0) return BadRequest();
 
@@ -108,24 +153,24 @@ namespace Recetario_API.Controllers
             return NoContent();
         }
 
-        [HttpPatch("id:int")]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public IActionResult PatchReceta(int id, JsonPatchDocument<RecetaDto> receta)
-        {
-            if (receta == null || id == 0) return BadRequest();
+        //[HttpPatch("id:int")]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //[ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[ProducesResponseType(StatusCodes.Status204NoContent)]
+        //public IActionResult PatchReceta(int id, JsonPatchDocument<RecetaDto> receta)
+        //{
+        //    if (receta == null || id == 0) return BadRequest();
 
-            var result = RecetasList.recetaDtos.FirstOrDefault(x => x.Id == id);
+        //    var result = RecetasList.recetaDtos.FirstOrDefault(x => x.Id == id);
 
-            if (result == null) return NotFound();
+        //    if (result == null) return NotFound();
 
-            receta.ApplyTo(result, ModelState);
+        //    receta.ApplyTo(result, ModelState);
 
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+        //    if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            return NoContent();
-        }
+        //    return NoContent();
+        //}
 
     }
 }

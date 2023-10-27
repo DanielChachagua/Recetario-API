@@ -16,7 +16,7 @@ namespace Recetario_API.Services
             Receta newReceta = new Receta
             {
                 Nombre = receta.Nombre,
-                Imagen = "Imagenes/RecetaPhotos/default.png",
+                Imagen = "Images/RecetaPhotos/default.png",
                 TiempoPreparacion = receta.TiempoPreparacion,
                 TiempoCoccion = receta.TiempoCoccion,
                 UserId = receta.UserID
@@ -24,7 +24,7 @@ namespace Recetario_API.Services
             if (receta.Imagen != null && receta.Imagen.Length > 0)
             {
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(receta.Imagen.FileName);
-                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "Imagenes", "RecetaPhotos");
+                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", "RecetaPhotos");
 
                 if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
                 var filePath = Path.Combine(folderPath, fileName);
@@ -33,7 +33,7 @@ namespace Recetario_API.Services
                 {
                     await receta.Imagen.CopyToAsync(stream);
                 }
-                var imagenUrl = Path.Combine("Imagenes", "RecetaPhotos", fileName).Replace("\\", "/");
+                var imagenUrl = Path.Combine("Images", "RecetaPhotos", fileName).Replace("\\", "/");
                 newReceta.Imagen = imagenUrl;
             }
             _dbContext.Recetas.Add(newReceta);
@@ -45,31 +45,28 @@ namespace Recetario_API.Services
             //// Mapear la entidad Receta a RecetaDto y retornarlo
             int ultimoID = ultimaReceta.Id;
 
-            //foreach (var ingrediente in receta.ListaIngredientes)
-            //{
-            //    foreach (var ing in ingrediente)
-            //    {
-            //        List<string> i = ing.Split(',').ToList();
-            //        var newIngrediente = new IngredienteReceta
-            //        {
-            //            Cantidad = double.Parse(i[0]),
-            //            Unidad = i[1],
-            //            Ingrediente = i[2],
-            //            RecetaId = ultimoID
-            //        };
-            //        _dbContext.IngredientesRecetas.Add(newIngrediente);
-            //    }
-            //}
+            foreach (var ingrediente in receta.ListaIngredientes)
+            { 
+                var newIngrediente = new IngredienteReceta
+                {
+                    Cantidad = ingrediente.Cantidad,
+                    Unidad = ingrediente.Unidad,
+                    Ingrediente = ingrediente.Ingrediente,
+                    RecetaId = ultimoID
+                };
+                _dbContext.IngredientesRecetas.Add(newIngrediente);  
+            }
 
-            //foreach (var preparacion in receta.Preparacion)
-            //{
-            //    var prep = new PasosPreparacion
-            //    {
-            //        PasoPreparacion = preparacion,
-            //        RecetaId = ultimoID
-            //    };
-            //    _dbContext.PasosPreparaciones.Add(prep);
-            //}
+            foreach (var preparacion in receta.Preparacion)
+            {
+                var prep = new PasosPreparacion
+                {
+                    PasoPreparacion = preparacion.PasoPreparacion,
+                    RecetaId = ultimoID
+                };
+                _dbContext.PasosPreparaciones.Add(prep);
+            }
+
             await _dbContext.SaveChangesAsync();
             return ultimoID;
         }
@@ -170,14 +167,16 @@ namespace Recetario_API.Services
 
         public async Task<RecetaDto> UpdateReceta(int id, RecetaUpdate receta, DataBaseContext _dbContext)
         {
-            var rec = await _dbContext.Recetas.FindAsync(id);
+            var recetaExiste = _dbContext.Recetas
+                               .Include(r => r.UsuarioCreador)
+                               .FirstOrDefault(r => r.Id == id);
 
-            if (receta == null) return null;
+            if (recetaExiste == null) return null;
 
             if (receta.Imagen != null && receta.Imagen.Length > 0)
             {
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(receta.Imagen.FileName);
-                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "RecetaImage", "RecetaPhotos", receta.Nombre);
+                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", "RecetaPhotos");
 
                 if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
 
@@ -188,30 +187,56 @@ namespace Recetario_API.Services
                     await receta.Imagen.CopyToAsync(stream);
                 }
 
-                var photoUrl = Path.Combine("RecetaImage", "RecetaPhotos", receta.Nombre, fileName).Replace("\\", "/");
-                rec.Imagen = photoUrl;
+                var photoUrl = Path.Combine("Images", "RecetaPhotos", fileName).Replace("\\", "/");
+                recetaExiste.Imagen = photoUrl;
             }
 
-            //rec.Nombre = receta.Nombre;
-            //rec.ListaIngredientes = receta.ListaIngredientes;
-            //rec.Preparacion = receta.Preparacion;
-            //rec.TiempoPreparacion = receta.TiempoPreparacion;
-            //rec.TiempoCoccion = receta.TiempoCoccion;
-            //rec.FechaActualizacion = DateTime.UtcNow;
+            recetaExiste.Nombre = receta.Nombre;
+            recetaExiste.TiempoPreparacion = receta.TiempoPreparacion;
+            recetaExiste.TiempoCoccion = receta.TiempoCoccion;
+            recetaExiste.FechaActualizacion = DateTime.UtcNow;
+
+            _dbContext.Recetas.Update(recetaExiste);
+
+            var ingredientes = _dbContext.IngredientesRecetas.Where(i => i.RecetaId == id).ToHashSet();
+            var preparaciones = _dbContext.PasosPreparaciones.Where(i => i.RecetaId == id).ToHashSet();
+            _dbContext.IngredientesRecetas.RemoveRange(ingredientes);
+            _dbContext.PasosPreparaciones.RemoveRange(preparaciones);
+
+            foreach (var ingrediente in receta.ListaIngredientes)
+            {
+                var newIngrediente = new IngredienteReceta
+                {
+                    Cantidad = ingrediente.Cantidad,
+                    Unidad = ingrediente.Unidad,
+                    Ingrediente = ingrediente.Ingrediente,
+                    RecetaId = id
+                };
+                _dbContext.IngredientesRecetas.Add(newIngrediente);
+            }
+
+            foreach (var preparacion in receta.Preparacion)
+            {
+                var prep = new PasosPreparacion
+                {
+                    PasoPreparacion = preparacion.PasoPreparacion,
+                    RecetaId = id
+                };
+                _dbContext.PasosPreparaciones.Add(prep);
+            }
 
             await _dbContext.SaveChangesAsync();
 
-            return null;
-            //return new RecetaDto
-            //{
-            //    Nombre = rec.Nombre,
-            //    ListaIngredientes = rec.ListaIngredientes,
-            //    Preparacion = rec.Preparacion,
-            //    Imagen = rec.Imagen,
-            //    TiempoPreparacion = rec.TiempoPreparacion,
-            //    TiempoCoccion = rec.TiempoCoccion,
-            //    FechaActualizacion = rec.FechaActualizacion
-            //};
+            return new RecetaDto
+            {
+                Nombre = recetaExiste.Nombre,
+                ListaIngredientes = receta.ListaIngredientes,
+                Preparacion = receta.Preparacion,
+                Imagen = recetaExiste.Imagen,
+                TiempoPreparacion = recetaExiste.TiempoPreparacion,
+                TiempoCoccion = recetaExiste.TiempoCoccion,
+                FechaActualizacion = recetaExiste.FechaActualizacion
+            };
 
         }
     }

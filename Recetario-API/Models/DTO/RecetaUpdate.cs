@@ -2,9 +2,14 @@
 {
     public class RecetaUpdate
     {
+        public RecetaUpdate()
+        {
+            ListaIngredientes = new HashSet<IngredientesDto>();
+            Preparacion = new HashSet<PreparacionDto>();
+        }
         public string Nombre { get; set; }
-        public List<IngredienteReceta> ListaIngredientes { get; set; }
-        public List<PasosPreparacion> Preparacion { get; set; }
+        public ICollection<IngredientesDto> ListaIngredientes { get; set; }
+        public ICollection<PreparacionDto> Preparacion { get; set; }
         public IFormFile? Imagen { get; set; }
         public int TiempoPreparacion { get; set; }
         public int TiempoCoccion { get; set; }
