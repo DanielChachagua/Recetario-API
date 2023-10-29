@@ -6,18 +6,14 @@ namespace Recetario_API.Models
 {
     public class JWT
     {
-        private readonly DataBaseContext _context;
         public string Key { get; set; }
         public string Issuer { get; set; }
         public string Audience { get; set; }
         public string Subject { get; set; }
 
-        public JWT(DataBaseContext context)
-        {
-            _context = context;
-        }
+        
 
-        public dynamic ValidarToken(ClaimsIdentity identity)
+        public static dynamic ValidarToken(ClaimsIdentity identity, DataBaseContext _dbContext)
         {
             try
             {
@@ -43,8 +39,7 @@ namespace Recetario_API.Models
                     };
                 }
 
-                var usuario = _context.Users.Find(id);
-                Console.WriteLine(usuario.Id);
+                var usuario = _dbContext.Users.Find(int.Parse(id));
 
                 if (usuario == null)
                 {
@@ -60,7 +55,15 @@ namespace Recetario_API.Models
                 {
                     success = true,
                     message = "Éxito",
-                    result = usuario
+                    result = new UserResp
+                    {
+                        Id = usuario.Id,
+                        Username = usuario.Username,
+                        FirstName = usuario.FirstName,
+                        LastName = usuario.LastName,
+                        Email = usuario.Email,
+                        Imagen = usuario.Imagen
+                    }
                 };
 
             }

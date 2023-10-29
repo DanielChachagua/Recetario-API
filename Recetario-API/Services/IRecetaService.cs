@@ -9,8 +9,8 @@ namespace Recetario_API.Services
     {
         Task<RecetaDto?> GetReceta(int id, DataBaseContext _dbContext);
         Task<IEnumerable<RecetaDto>> GetRecetas(DataBaseContext _dbContext);
-        Task<int> CreateReceta(RecetaCreate receta, DataBaseContext _dbContext);
-        Task<RecetaDto> UpdateReceta(int id, RecetaUpdate receta, DataBaseContext _dbContext);
-        Task<bool> DeleteReceta(int id, DataBaseContext _dbContext);
+        Task<int> CreateReceta(RecetaCreate receta, int usuarioID, DataBaseContext _dbContext);
+        Task<dynamic> UpdateReceta(int id, RecetaUpdate receta, int usuarioID, DataBaseContext _dbContext);
+        Task<dynamic> DeleteReceta(int id, int usuarioID, DataBaseContext _dbContext);
     }
 }

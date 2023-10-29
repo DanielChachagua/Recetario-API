@@ -1,4 +1,6 @@
-﻿using Azure;
+﻿using System.Security.Claims;
+using Azure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using Recetario_API.Data;
 using Recetario_API.Models;
 using Recetario_API.Models.DTO;
+using Recetario_API.Models.Usuarios;
 using Recetario_API.Services;
 
 namespace Recetario_API.Controllers
@@ -59,12 +62,18 @@ namespace Recetario_API.Controllers
             return Ok(receta);
         }
 
-        [HttpPost("crear")]
+        [HttpPost("create")]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<RecetaDto>> CrearReceta([FromForm] RecetaCreate receta)
         {
+            var identity = HttpContext.User.Identity as ClaimsIdentity;
+            var rToken = JWT.ValidarToken(identity, _dbContext);
+            if (!rToken.success) return Unauthorized(rToken);
+            UserResp usuario = rToken.result;
+
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var listaIngredientes = "[" + ModelState["ListaIngredientes"].AttemptedValue + "]";
@@ -92,34 +101,52 @@ namespace Recetario_API.Controllers
             }
             if (receta == null) return BadRequest(receta);
 
-            var newReceta = await _recetaService.CreateReceta(receta, _dbContext);
+            var newReceta = await _recetaService.CreateReceta(receta, usuario.Id, _dbContext);
             return CreatedAtRoute("GetReceta", new {id = newReceta},receta); 
            
         }
 
-        [HttpDelete("id:int")]
+        [HttpDelete("delete/id:int")]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public IActionResult DeleteReceta(int id)
         {
+            var identity = HttpContext.User.Identity as ClaimsIdentity;
+            var rToken = JWT.ValidarToken(identity, _dbContext);
+            if (!rToken.success) return Unauthorized(rToken);
+            UserResp usuario = rToken.result;
+
             if (id == 0) return BadRequest();
 
-            var result = _recetaService.DeleteReceta(id, _dbContext);
+            var result = _recetaService.DeleteReceta(id, usuario.Id, _dbContext);
 
-            if (result.Result == false ) return NotFound();
+            if (result.Result.result == "404") return NotFound(result.Result);
+            if (result.Result.result == "403") return StatusCode(403, result.Result);
 
             return NoContent();
 
         }
 
-        [HttpPut("id:int")]
+        [HttpPut("update/id:int")]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public IActionResult UpdateReceta(int id, [FromForm] RecetaUpdate receta)
         {
+            var identity = HttpContext.User.Identity as ClaimsIdentity;
+            var rToken = JWT.ValidarToken(identity, _dbContext);
+            if (!rToken.success) return Unauthorized(rToken);
+            UserResp usuario = rToken.result;
+
             if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            if (receta == null || id == 0) return BadRequest();
+
             var listaIngredientes = "[" + ModelState["ListaIngredientes"].AttemptedValue + "]";
             var listaPreparacion = "[" + ModelState["Preparacion"].AttemptedValue + "]";
 
@@ -144,11 +171,10 @@ namespace Recetario_API.Controllers
                 });
             }
 
-            if (receta == null || id == 0) return BadRequest();
+            var result = _recetaService.UpdateReceta(id, receta, usuario.Id, _dbContext);
 
-            var result = _recetaService.UpdateReceta(id, receta, _dbContext);
-
-            if (result == null) return NotFound();
+            if (result.Result.result == "404") return NotFound(result.Result);
+            if (result.Result.result == "403") return StatusCode(403, result.Result);
 
             return NoContent();
         }

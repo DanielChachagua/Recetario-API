@@ -25,7 +25,6 @@ namespace Recetario_API.Models.DTO
         public IFormFile? Imagen { get; set; }
         public int TiempoPreparacion { get; set; }
         public int TiempoCoccion { get; set; }
-        public int UserID { get; set; }
         
     }
 }

@@ -1,6 +1,12 @@
 ﻿using System.Data.Entity;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Recetario_API.Data;
+using Recetario_API.Models;
 using Recetario_API.Models.Usuarios;
+using Microsoft.AspNetCore.Http;
 
 namespace Recetario_API.Services
 {
@@ -26,24 +32,59 @@ namespace Recetario_API.Services
             };
         }
 
-        public async Task<UserDto?> Login(Authentication authentication, DataBaseContext _dbContext)
+        public async Task<dynamic> Login(Authentication authentication, DataBaseContext _dbContext, IConfiguration _configuration)
         {
-            var user = await _dbContext.Users.FindAsync(authentication.Email);
+            var user = _dbContext.Users.Where(u => u.Email == authentication.Email).FirstOrDefault();
 
-            if (user == null) return null;
-
-            if (PasswordHash.VerifyPassword(authentication.Password, user.Password))
+            if (user == null) return new
             {
-                return new UserDto
+                success = false,
+                message = "Credenciales incorrectas",
+                result = ""
+            };
+
+            if (!PasswordHash.VerifyPassword(authentication.Password, user.Password))
+            {
+                return new
                 {
-                    Id = user.Id,
-                    Username = user.Username,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Imagen = user.Imagen,
+                    success = false,
+                    message = "Credenciales incorrectas",
+                    result = ""
                 };
             }
-            return null;
+
+            var jwt = _configuration.GetSection("Jwt").Get<JWT>();
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, jwt.Subject),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Iat, DateTime.UtcNow.ToString()),
+                new Claim("id",user.Id.ToString()),
+                new Claim("username",user.Username),
+                new Claim("firstName",user.FirstName),
+                new Claim("lastName",user.LastName),
+                new Claim("email",user.Email)
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
+
+            var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                jwt.Issuer,
+                jwt.Audience,
+                claims,
+                expires: DateTime.Now.AddDays(1),
+                signingCredentials: signIn
+                );
+
+            return new
+            {
+                success = true,
+                message = "Exito",
+                result = new JwtSecurityTokenHandler().WriteToken(token)
+            };
         }
 
         //public Task<UserDto> Logout(int id)
@@ -90,7 +131,7 @@ namespace Recetario_API.Services
             if (usuario.Imagen != null && usuario.Imagen.Length > 0)
             {
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(usuario.Imagen.FileName);
-                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "Imagenes", "UserPhotos", user.Username);
+                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", "UserPhotos", user.Username);
 
                 if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
                 var filePath = Path.Combine(folderPath, fileName);
@@ -99,7 +140,7 @@ namespace Recetario_API.Services
                 {
                     await usuario.Imagen.CopyToAsync(stream);
                 }
-                var imagenUrl = Path.Combine("Imagenes", "UserPhotos", user.Username, fileName).Replace("\\", "/");
+                var imagenUrl = Path.Combine("Images", "UserPhotos", user.Username, fileName).Replace("\\", "/");
                 user.Imagen = imagenUrl;
             }
 

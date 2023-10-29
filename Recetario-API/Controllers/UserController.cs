@@ -17,11 +17,23 @@ namespace Recetario_API.Controllers
         private readonly ILogger<RecetaController> _logger;
         private readonly IUserService _userService;
 
-        public UserController(ILogger<RecetaController> logger, IUserService userService, DataBaseContext dbContext)
+        public UserController(ILogger<RecetaController> logger, IUserService userService, DataBaseContext dbContext, IConfiguration configuration)
         {
             _logger = logger;
             _userService = userService;
             _dbContext = dbContext;
+            _configuration = configuration;
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult<dynamic>> login([FromBody] Authentication authentication)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (authentication == null) return BadRequest(authentication);
+
+            var login = _userService.Login(authentication, _dbContext, _configuration);
+            if (login.Result.success == false) return BadRequest(login.Result);
+            return Ok(login.Result);
         }
 
         [HttpGet("id:int", Name = "GetUser")]
@@ -78,5 +90,7 @@ namespace Recetario_API.Controllers
 
             return NoContent();
         }
+
+
     }
 }
