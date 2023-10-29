@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Recetario_API.Data;
+using Recetario_API.Models;
 using Recetario_API.Models.DTO;
 using Recetario_API.Models.Usuarios;
 using Recetario_API.Services;
@@ -60,37 +63,26 @@ namespace Recetario_API.Controllers
         }
 
         [HttpPut("id:int")]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> UpdateUser(int id, [FromForm] UserUpdate user)
+        public async Task<IActionResult> UpdateUser([FromForm] UserUpdate user)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-            if (user == null || id == 0) return BadRequest();
-            var result = _userService.UpdateUser(id,user,_dbContext);
-            if (result == null) return NotFound();
-            return NoContent();
-        }
+            if (user == null) return BadRequest();
 
-        [HttpPatch("id:int")]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public IActionResult PatchReceta(int id, JsonPatchDocument<RecetaDto> receta)
-        {
-            if (receta == null || id == 0) return BadRequest();
+            var identity = HttpContext.User.Identity as ClaimsIdentity;
+            var rToken = JWT.ValidarToken(identity, _dbContext);
+            if (!rToken.success) return Unauthorized(rToken);
+            UserResp usuario = rToken.result;
 
-            var result = RecetasList.recetaDtos.FirstOrDefault(x => x.Id == id);
+            var result = _userService.UpdateUser(usuario.Id, user, _dbContext);
 
-            if (result == null) return NotFound();
-
-            receta.ApplyTo(result, ModelState);
-
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (result.Result.result == "404") return NotFound(result.Result);
 
             return NoContent();
         }
-
 
     }
 }

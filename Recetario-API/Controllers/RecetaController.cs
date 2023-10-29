@@ -1,11 +1,8 @@
 ﻿using System.Security.Claims;
 using Azure;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Recetario_API.Data;
 using Recetario_API.Models;
 using Recetario_API.Models.DTO;
@@ -53,7 +50,6 @@ namespace Recetario_API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-
         public async Task<ActionResult<RecetaDto>> GetReceta(int id)
         {
             if (id == 0) return BadRequest();

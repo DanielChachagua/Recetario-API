@@ -12,12 +12,6 @@ namespace Recetario_API.Services
 {
     public class UserService : IUserService
     {
-        
-
-        //public UserService(DataBaseContext context)
-        //{
-            
-        //}
         public async Task<UserDto?> GetUser(int id, DataBaseContext _dbContext)
         {
             var user = await _dbContext.Users.FindAsync(id);
@@ -87,11 +81,6 @@ namespace Recetario_API.Services
             };
         }
 
-        //public Task<UserDto> Logout(int id)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
         public async Task<UserDto?> RegisterUSer(UserRegister usuario, DataBaseContext _dbContext)
         {
             var newUsuario = new User
@@ -120,14 +109,16 @@ namespace Recetario_API.Services
             };
         }
 
-        public async Task<UserDto> UpdateUser(int id, UserUpdate usuario, DataBaseContext _dbContext)
+        public async Task<dynamic> UpdateUser(int id, UserUpdate usuario, DataBaseContext _dbContext)
         {
-            //var user = await _context.User.Where(u => u.Id == id).FirstOrDefaultAsync();
-
             var user = _dbContext.Users.Find(id);
-            if (user == null) return null;
-            if (usuario == null) return null;
-            // Verificar si la imagen no es null y tiene datos
+            if (user == null) return new
+            {
+                success = false,
+                message = "Usuario no encontrado",
+                result = "404"
+            };
+
             if (usuario.Imagen != null && usuario.Imagen.Length > 0)
             {
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(usuario.Imagen.FileName);
@@ -155,13 +146,18 @@ namespace Recetario_API.Services
             _dbContext.Users.Update(user);
             _dbContext.SaveChanges();
 
-            return new UserDto
+            return new 
             {
-                Id = user.Id,
-                Username = user.Username,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Imagen = user.Imagen,
+                success = true,
+                message = "Usuario actualizado",
+                result = new UserDto
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Imagen = user.Imagen,
+                }
             };
 
         }
