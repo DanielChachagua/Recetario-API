@@ -8,6 +8,7 @@ using Recetario_API.Models;
 using Recetario_API.Models.DTO;
 using Recetario_API.Models.Usuarios;
 using Recetario_API.Services;
+using Swashbuckle.Swagger;
 
 namespace Recetario_API.Controllers
 {
@@ -35,6 +36,7 @@ namespace Recetario_API.Controllers
             if (authentication == null) return BadRequest(authentication);
 
             var login = _userService.Login(authentication, _dbContext, _configuration);
+            Request.Headers.Add("Mi-Campo-Custom", "Valor del Campo");
             if (login.Result.success == false) return BadRequest(login.Result);
             return Ok(login.Result);
         }
